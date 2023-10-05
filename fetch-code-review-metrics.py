@@ -20,7 +20,7 @@ BASE_QUERY = """query {{
         comments {{
           totalCount
         }}
-        reviews(first: 1) {{
+        reviews(first: 5) {{
           edges {{
             node {{
               ... on PullRequestReview {{
@@ -59,6 +59,8 @@ def fetch_code_review_metrics(query, queryOpts, token):
             queryString = "{} org:{}".format(queryString, queryOpts["org"])
 
         query = BASE_QUERY.format(queryString)
+    else:
+        query = BASE_QUERY.format(query)
 
     url = 'https://api.github.com/graphql'
     auth = 'Bearer {}'.format(token)
@@ -94,8 +96,9 @@ def parse_pr_into_dict(pr):
     }
 
     reviews = node["reviews"]["edges"]
-    if len(reviews) > 0:
-        first_review = reviews[0]['node']
+    review = next(filter(lambda r: r['node']['reviewedBy']['login'] != pr_dict['created_by'], reviews), None)
+    if review is not None:
+        first_review = review['node']
         reviewed_at = first_review['reviewedAt']
         lead_time = time_difference_in_minutes(created_at, reviewed_at)
         pr_dict['first_reviewed_at'] = reviewed_at
